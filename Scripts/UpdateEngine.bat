@@ -1,7 +1,7 @@
 @echo off
 
 pushd %~dp0\..\Engine
-call git checkout dev
+call git checkout master
 call git pull
 popd
 
