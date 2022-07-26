@@ -1,7 +1,7 @@
 #include "pch.h"
 #include <Moon/Core/Entrypoint.h>
 
-#include "GameName/Application/Application.h"
+#include "GameName/Core/Application.h"
 
 
 namespace Moon {
