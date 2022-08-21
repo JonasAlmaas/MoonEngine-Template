@@ -1,4 +1,4 @@
-// Text 2D shader
+// Basic 2D Shader
 
 #type vertex
 #version 450 core
@@ -7,6 +7,7 @@ layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec4 a_Color;
 layout(location = 2) in vec2 a_UV;
 layout(location = 3) in float a_TextureIndex;
+layout(location = 4) in int a_EntityID;
 
 layout(std140, binding = 0) uniform Camera
 {
@@ -21,6 +22,7 @@ struct VertexOutput
 
 layout (location = 0) out VertexOutput Output;
 layout (location = 3) out flat float v_TextureIndex;
+layout (location = 4) out flat int v_EntityID;
 
 void main()
 {
@@ -28,9 +30,11 @@ void main()
 	Output.UV = a_UV;
 
 	v_TextureIndex = a_TextureIndex;
+	v_EntityID = a_EntityID;
 
 	gl_Position = u_ViewProjection * vec4(a_Position, 1.0);
 }
+
 
 #type pixel
 #version 450 core
@@ -46,32 +50,27 @@ struct VertexOutput
 
 layout (location = 0) in VertexOutput Input;
 layout (location = 3) in flat float v_TextureIndex;
+layout (location = 4) in flat int v_EntityID;
 
-layout (binding = 0) uniform sampler2D u_FontAtlases[32];
+layout (binding = 0) uniform sampler2D u_Textures[32];
 
-float median(float r, float g, float b)
+float Lerp(float x, float y, float a)
 {
-    return max(min(r, g), min(max(r, g), b));
+	return x + ((y - x) * a);
 }
 
-float ScreenPxRange()
+vec3 Lerp3(vec3 v1, vec3 v2, float a)
 {
-	float pxRange = 2.0f;
-    vec2 unitRange = vec2(pxRange) / vec2(textureSize(u_FontAtlases[int(v_TextureIndex)], 0));
-    vec2 screenTexSize = vec2(1.0) / fwidth(Input.UV);
-    return max(0.5*dot(unitRange, screenTexSize), 1.0);
+	return vec3(Lerp(v1.x, v2.x, a), Lerp(v1.y, v2.y, a), Lerp(v1.z, v2.z, a));
 }
 
 void main()
 {
-	vec4 bgColor = vec4(Input.Color.rgb, 0.0);
-	vec4 fgColor = Input.Color;
+	vec4 color = texture(u_Textures[int(v_TextureIndex)], Input.UV);
+	o_Color = vec4(Lerp3(color.xyz, Input.Color.xyz, Input.Color.a), color.a);
 
-	vec3 msd = texture(u_FontAtlases[int(v_TextureIndex)], Input.UV).rgb;
-    float sd = median(msd.r, msd.g, msd.b);
-    float screenPxDistance = ScreenPxRange() * (sd - 0.5);
-    float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);
+	if (o_Color.a == 0.0)
+		discard;
 
-	o_Color = mix(bgColor, fgColor, opacity);
-	o_EntityID = -1;
+	o_EntityID = v_EntityID;
 }
